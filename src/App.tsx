@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Link, Navigate } from 'react-router-dom';
+import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { ThemeProvider } from './providers/ThemeProvider';
 import { ThemeToggle } from './components/ThemeToggle';
@@ -40,22 +40,6 @@ function Navigation() {
               >
                 Home
               </Link>
-              {user && (
-                <>
-                  <Link
-                    to="/chat"
-                    className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-primary-500 dark:hover:text-primary-400"
-                  >
-                    Chat
-                  </Link>
-                  <Link
-                    to="/settings"
-                    className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-primary-500 dark:hover:text-primary-400"
-                  >
-                    Settings
-                  </Link>
-                </>
-              )}
               <Link
                 to="/new"
                 className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-primary-500 dark:hover:text-primary-400"
@@ -74,13 +58,29 @@ function Navigation() {
               >
                 About
               </Link>
-              {isAdmin && (
-                <Link
-                  to="/admin"
-                  className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-primary-500 dark:hover:text-primary-400"
-                >
-                  Admin
-                </Link>
+              {user && (
+                <>
+                  <Link
+                    to="/chat"
+                    className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-primary-500 dark:hover:text-primary-400"
+                  >
+                    Chat
+                  </Link>
+                  <Link
+                    to="/settings"
+                    className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-primary-500 dark:hover:text-primary-400"
+                  >
+                    Settings
+                  </Link>
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      className="inline-flex items-center px-1 pt-1 text-sm font-medium text-gray-900 dark:text-gray-100 hover:text-primary-500 dark:hover:text-primary-400"
+                    >
+                      Admin
+                    </Link>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -116,19 +116,19 @@ function Navigation() {
   );
 }
 
-function LoadingSpinner() {
-  return (
-    <div className="min-h-screen bg-dark-900 dark:bg-dark-950 flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-400"></div>
-    </div>
-  );
-}
-
 function App() {
-  const { loading } = useAuth();
+  const { user, loading } = useAuth();
+  const location = useLocation();
 
-  if (loading) {
-    return <LoadingSpinner />;
+  // Only show loading spinner on protected routes when auth is loading
+  const isProtectedRoute = ['/chat', '/new', '/trending', '/settings', '/admin'].includes(location.pathname);
+  
+  if (loading && isProtectedRoute) {
+    return (
+      <div className="min-h-screen bg-dark-900 dark:bg-dark-950 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-400"></div>
+      </div>
+    );
   }
 
   return (
@@ -138,34 +138,42 @@ function App() {
         <main className="flex-grow">
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route 
-              path="/chat" 
-              element={
-                <ProtectedRoute>
-                  <Chatbot />
-                </ProtectedRoute>
-              } 
-            />
-            <Route path="/new" element={<New />} />
-            <Route path="/trending" element={<Trending />} />
             <Route path="/about" element={<About />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            
+            {/* Protected Routes */}
+            <Route 
+              path="/chat" 
+              element={
+                user ? <Chatbot /> : <Navigate to="/login" state={{ from: location }} replace />
+              }
+            />
+            <Route 
+              path="/new" 
+              element={
+                user ? <New /> : <Navigate to="/login" state={{ from: location }} replace />
+              }
+            />
+            <Route 
+              path="/trending" 
+              element={
+                user ? <Trending /> : <Navigate to="/login" state={{ from: location }} replace />
+              }
+            />
             <Route 
               path="/settings" 
               element={
-                <ProtectedRoute>
-                  <Settings />
-                </ProtectedRoute>
-              } 
+                user ? <Settings /> : <Navigate to="/login" state={{ from: location }} replace />
+              }
             />
             <Route 
               path="/admin" 
               element={
-                <ProtectedRoute adminOnly>
-                  <AdminPanel />
-                </ProtectedRoute>
-              } 
+                user && user.email === import.meta.env.VITE_ADMIN_EMAIL ? 
+                <AdminPanel /> : 
+                <Navigate to="/" replace />
+              }
             />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
