@@ -1,4 +1,12 @@
 import axios from 'axios';
+import { isAxiosError } from 'axios';
+
+interface AxiosErrorResponse {
+  response?: {
+    status: number;
+    data: unknown;
+  };
+}
 
 interface Message {
   role: 'user' | 'assistant';
@@ -24,13 +32,18 @@ export async function generateResponse(messages: Message[]): Promise<string> {
     ).join('\n');
 
     // Construct the prompt
-    const prompt = `You are OppGenie, an AI assistant focused on helping Gen Z find opportunities in tech and computer science.
-Your goal is to provide specific, actionable opportunities and advice.
-When suggesting opportunities, include:
-- Specific companies, programs, or initiatives
-- Requirements and deadlines if applicable
-- Links or resources for more information
-- Next steps for applying
+    const prompt = `You are OppGenie, a helpful AI assistant focused on helping people find opportunities across all domains and fields.
+Your goal is to provide specific, actionable opportunities and advice tailored to the user's interests and field.
+
+When suggesting opportunities, ALWAYS follow this exact format for EACH opportunity:
+
+📌 [OPPORTUNITY TITLE]
+🏢 Organization: [Organization Name]
+📋 Type: [Internship/Scholarship/Program/etc]
+📅 Deadline: [Deadline or "Rolling/Ongoing"]
+💡 Eligibility: [Key eligibility criteria]
+🔗 Direct Link: [Clickable application/info link]
+📝 How to Apply: [Brief, step-by-step process]
 
 Current conversation:
 ${conversationHistory}
@@ -76,8 +89,8 @@ Assistant:`;
     console.error('Error generating response:', error);
     
     // Type guard for axios errors
-    if (error && typeof error === 'object' && 'isAxiosError' in error) {
-      const axiosError = error as { response?: { status: number; data: unknown } };
+    if (error && typeof error === 'object' && 'response' in error) {
+      const axiosError = error as AxiosErrorResponse;
       if (axiosError.response?.status === 429) {
         return "I'm currently experiencing high traffic. Please try again in a moment.";
       }

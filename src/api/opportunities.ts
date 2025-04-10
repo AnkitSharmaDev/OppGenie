@@ -1,17 +1,115 @@
 import axios from 'axios';
 
-interface Opportunity {
+export interface Opportunity {
   id: string;
   title: string;
   organization: string;
   type: string;
-  location: string;
-  posted: string;
   deadline: string;
+  eligibility: string;
+  link: string;
   description: string;
-  url: string;
-  tags: string[];
-  logo?: string;
+  category: string;
+  source: string;
+}
+
+// Fetch opportunities from multiple sources
+export async function fetchOpportunities(category?: string): Promise<Opportunity[]> {
+  try {
+    const opportunities: Opportunity[] = [];
+    
+    // Fetch from GitHub Jobs API
+    const githubOpps = await fetchGitHubOpportunities();
+    opportunities.push(...githubOpps);
+    
+    // Fetch from LinkedIn Jobs API
+    const linkedinOpps = await fetchLinkedInOpportunities();
+    opportunities.push(...linkedinOpps);
+    
+    // Fetch from custom database/API
+    const customOpps = await fetchCustomOpportunities();
+    opportunities.push(...customOpps);
+    
+    // Filter by category if provided
+    return category 
+      ? opportunities.filter(opp => opp.category.toLowerCase() === category.toLowerCase())
+      : opportunities;
+  } catch (error) {
+    console.error('Error fetching opportunities:', error);
+    throw error;
+  }
+}
+
+async function fetchGitHubOpportunities(): Promise<Opportunity[]> {
+  // Implementation for GitHub opportunities
+  const response = await axios.get('https://api.github.com/repos/github/maintainers-program/issues');
+  return response.data.map((issue: any) => ({
+    id: issue.id.toString(),
+    title: issue.title,
+    organization: 'GitHub',
+    type: 'Open Source',
+    deadline: 'Ongoing',
+    eligibility: 'Open to all',
+    link: issue.html_url,
+    description: issue.body,
+    category: 'Technology',
+    source: 'GitHub'
+  }));
+}
+
+async function fetchLinkedInOpportunities(): Promise<Opportunity[]> {
+  // Implementation for LinkedIn opportunities
+  // Note: This would require LinkedIn API access
+  return [];
+}
+
+async function fetchCustomOpportunities(): Promise<Opportunity[]> {
+  // Add custom curated opportunities
+  return [
+    {
+      id: 'custom-1',
+      title: 'UN Young Leaders Programme',
+      organization: 'United Nations',
+      type: 'Leadership Program',
+      deadline: '2024-12-31',
+      eligibility: 'Students and young professionals aged 18-29',
+      link: 'https://www.un.org/youthenvoy/young-leaders-for-sdgs/',
+      description: 'The Young Leaders Initiative recognizes young people who are leading efforts to combat world's most pressing issues.',
+      category: 'Social',
+      source: 'Custom'
+    },
+    {
+      id: 'custom-2',
+      title: 'Global Health Corps Fellowship',
+      organization: 'Global Health Corps',
+      type: 'Fellowship',
+      deadline: '2024-01-15',
+      eligibility: 'Early-career professionals under 30',
+      link: 'https://ghcorps.org/fellows/',
+      description: 'One-year paid fellowship for young professionals passionate about global health equity.',
+      category: 'Healthcare',
+      source: 'Custom'
+    },
+    // Add more opportunities across different categories
+  ];
+}
+
+// Function to get trending opportunities
+export async function getTrendingOpportunities(): Promise<Opportunity[]> {
+  const allOpportunities = await fetchOpportunities();
+  // Sort by some trending criteria (could be based on views, applications, etc.)
+  return allOpportunities.sort(() => Math.random() - 0.5).slice(0, 10);
+}
+
+// Function to get opportunities by search term
+export async function searchOpportunities(query: string): Promise<Opportunity[]> {
+  const allOpportunities = await fetchOpportunities();
+  const searchTerm = query.toLowerCase();
+  return allOpportunities.filter(opp => 
+    opp.title.toLowerCase().includes(searchTerm) ||
+    opp.description.toLowerCase().includes(searchTerm) ||
+    opp.organization.toLowerCase().includes(searchTerm)
+  );
 }
 
 interface GitHubRepo {

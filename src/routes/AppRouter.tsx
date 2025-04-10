@@ -8,6 +8,7 @@ import Login from '../pages/Login';
 import Register from '../pages/Register';
 import ProtectedRoute from '../components/ProtectedRoute';
 import Layout from '../components/Layout';
+import OpportunityDetail from '../pages/OpportunityDetail';
 
 export default function AppRouter() {
   return (
@@ -29,6 +30,14 @@ export default function AppRouter() {
             element={
               <ProtectedRoute>
                 <New />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/opportunity/:id"
+            element={
+              <ProtectedRoute>
+                <OpportunityDetail />
               </ProtectedRoute>
             }
           />
