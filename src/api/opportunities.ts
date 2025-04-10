@@ -11,56 +11,99 @@ export interface Opportunity {
   description: string;
   category: string;
   source: string;
+  location?: string; // Making location optional
+}
+
+interface GitHubRepo {
+  id: number;
+  name: string;
+  owner: {
+    login: string;
+    avatar_url: string;
+  };
+  created_at: string;
+  description: string | null;
+  html_url: string;
+  language: string | null;
+  topics: string[];
+}
+
+interface GitHubResponse {
+  items: GitHubRepo[];
 }
 
 // Fetch opportunities from multiple sources
-export async function fetchOpportunities(category?: string): Promise<Opportunity[]> {
+export async function fetchOpportunities(category?: string, location?: string): Promise<Opportunity[]> {
   try {
     const opportunities: Opportunity[] = [];
     
-    // Fetch from GitHub Jobs API
+    // Fetch from GitHub
     const githubOpps = await fetchGitHubOpportunities();
     opportunities.push(...githubOpps);
     
-    // Fetch from LinkedIn Jobs API
-    const linkedinOpps = await fetchLinkedInOpportunities();
-    opportunities.push(...linkedinOpps);
-    
-    // Fetch from custom database/API
+    // Fetch custom curated opportunities
     const customOpps = await fetchCustomOpportunities();
     opportunities.push(...customOpps);
     
+    let filteredOpps = opportunities;
+    
     // Filter by category if provided
-    return category 
-      ? opportunities.filter(opp => opp.category.toLowerCase() === category.toLowerCase())
-      : opportunities;
+    if (category) {
+      filteredOpps = filteredOpps.filter(opp => 
+        opp.category.toLowerCase() === category.toLowerCase()
+      );
+    }
+    
+    // Filter by location if provided
+    if (location) {
+      const searchLocation = location.toLowerCase();
+      filteredOpps = filteredOpps.filter(opp => {
+        if (!opp.location) return true; // Include if location is not specified
+        const oppLocation = opp.location.toLowerCase();
+        return oppLocation.includes(searchLocation) || oppLocation === 'remote';
+      });
+    }
+    
+    return filteredOpps;
   } catch (error) {
     console.error('Error fetching opportunities:', error);
     throw error;
   }
 }
 
-async function fetchGitHubOpportunities(): Promise<Opportunity[]> {
-  // Implementation for GitHub opportunities
-  const response = await axios.get('https://api.github.com/repos/github/maintainers-program/issues');
-  return response.data.map((issue: any) => ({
-    id: issue.id.toString(),
-    title: issue.title,
-    organization: 'GitHub',
-    type: 'Open Source',
-    deadline: 'Ongoing',
-    eligibility: 'Open to all',
-    link: issue.html_url,
-    description: issue.body,
-    category: 'Technology',
-    source: 'GitHub'
-  }));
-}
+// Main GitHub opportunities fetching function
+export async function fetchGitHubOpportunities(searchQuery?: string): Promise<Opportunity[]> {
+  try {
+    const query = searchQuery ? 
+      `${searchQuery} in:name,description,readme good-first-issues:>0` :
+      'good-first-issues:>0 help-wanted-issues:>0';
 
-async function fetchLinkedInOpportunities(): Promise<Opportunity[]> {
-  // Implementation for LinkedIn opportunities
-  // Note: This would require LinkedIn API access
-  return [];
+    const response = await axios.get<GitHubResponse>('https://api.github.com/search/repositories', {
+      params: {
+        q: query,
+        sort: 'updated',
+        order: 'desc',
+        per_page: 10
+      }
+    });
+
+    return response.data.items.map((repo): Opportunity => ({
+      id: `gh-${repo.id}`,
+      title: repo.name,
+      organization: repo.owner.login,
+      type: 'Open Source',
+      deadline: 'Ongoing',
+      eligibility: 'Open to all contributors',
+      link: repo.html_url,
+      description: repo.description || 'No description available',
+      category: 'Technology',
+      source: 'GitHub',
+      location: 'Remote'
+    }));
+  } catch (error) {
+    console.error('Error fetching GitHub opportunities:', error);
+    return [];
+  }
 }
 
 async function fetchCustomOpportunities(): Promise<Opportunity[]> {
@@ -74,9 +117,10 @@ async function fetchCustomOpportunities(): Promise<Opportunity[]> {
       deadline: '2024-12-31',
       eligibility: 'Students and young professionals aged 18-29',
       link: 'https://www.un.org/youthenvoy/young-leaders-for-sdgs/',
-      description: 'The Young Leaders Initiative recognizes young people who are leading efforts to combat world's most pressing issues.',
+      description: 'The Young Leaders Initiative recognizes young people who are leading efforts to combat world\'s most pressing issues.',
       category: 'Social',
-      source: 'Custom'
+      source: 'Custom',
+      location: 'Global'
     },
     {
       id: 'custom-2',
@@ -88,9 +132,9 @@ async function fetchCustomOpportunities(): Promise<Opportunity[]> {
       link: 'https://ghcorps.org/fellows/',
       description: 'One-year paid fellowship for young professionals passionate about global health equity.',
       category: 'Healthcare',
-      source: 'Custom'
-    },
-    // Add more opportunities across different categories
+      source: 'Custom',
+      location: 'Multiple Locations'
+    }
   ];
 }
 
@@ -112,101 +156,24 @@ export async function searchOpportunities(query: string): Promise<Opportunity[]>
   );
 }
 
-interface GitHubRepo {
-  id: number;
-  name: string;
-  owner: {
-    login: string;
-    avatar_url: string;
-  };
-  created_at: string;
-  description: string | null;
-  html_url: string;
-  language: string | null;
-  topics: string[];
-}
-
-interface GitHubResponse {
-  items: GitHubRepo[];
-}
-
-export const fetchGitHubOpportunities = async (searchQuery: string = ''): Promise<Opportunity[]> => {
+// Function to get all opportunities with optional filtering
+export async function fetchAllOpportunities(searchQuery?: string): Promise<Opportunity[]> {
   try {
-    const query = searchQuery ? 
-      `${searchQuery} in:name,description,readme good-first-issues:>0` :
-      'good-first-issues:>0 help-wanted-issues:>0';
-
-    const response = await axios.get<GitHubResponse>('https://api.github.com/search/repositories', {
-      params: {
-        q: query,
-        sort: 'updated',
-        order: 'desc',
-        per_page: 10
-      }
-    });
-
-    return response.data.items.map((repo) => ({
-      id: `gh-${repo.id}`,
-      title: repo.name,
-      organization: repo.owner.login,
-      type: 'Open Source',
-      location: 'Remote',
-      posted: new Date(repo.created_at).toLocaleDateString(),
-      deadline: 'Ongoing',
-      description: repo.description || 'No description available',
-      url: repo.html_url,
-      tags: [repo.language, ...repo.topics || []].filter((tag): tag is string => Boolean(tag)),
-      logo: repo.owner.avatar_url
-    }));
-  } catch (error: unknown) {
-    console.error('Error fetching GitHub opportunities:', error);
-    if (error && typeof error === 'object' && 'isAxiosError' in error) {
-      const axiosError = error as { response?: { status: number; data: unknown } };
-      console.error('API Error details:', axiosError.response?.data);
-    }
+    const githubOpps = await fetchGitHubOpportunities(searchQuery);
+    const customOpps = await fetchCustomOpportunities();
+    
+    return [...githubOpps, ...customOpps];
+  } catch (error) {
+    console.error('Error fetching opportunities:', error);
     return [];
   }
-};
-
-interface JobResponse {
-  items: Array<{
-    id: string;
-    title: string;
-    company: string;
-    location: string;
-    posted_at: string;
-    deadline: string;
-    description: string;
-    url: string;
-    skills: string[];
-    company_logo: string;
-  }>;
 }
 
-export const fetchLinkedInJobs = async (location: string = ''): Promise<Opportunity[]> => {
-  try {
-    const response = await axios.get<JobResponse>('/api/linkedin-jobs', {
-      params: { location }
-    });
-
-    return response.data.items.map(job => ({
-      id: `li-${job.id}`,
-      title: job.title,
-      organization: job.company,
-      type: 'Job',
-      location: job.location,
-      posted: job.posted_at,
-      deadline: job.deadline,
-      description: job.description,
-      url: job.url,
-      tags: job.skills,
-      logo: job.company_logo
-    }));
-  } catch (error: unknown) {
-    console.error('Error fetching LinkedIn jobs:', error);
-    return [];
-  }
-};
+async function fetchLinkedInOpportunities(): Promise<Opportunity[]> {
+  // Implementation for LinkedIn opportunities
+  // Note: This would require LinkedIn API access
+  return [];
+}
 
 export const fetchIndeedJobs = async (location: string = '') => {
   // This would be your backend API endpoint that fetches from Indeed
