@@ -5,6 +5,10 @@ interface Message {
   content: string;
 }
 
+interface HuggingFaceResponse {
+  generated_text: string;
+}
+
 export async function generateResponse(messages: Message[]): Promise<string> {
   const token = import.meta.env.VITE_HUGGINGFACE_API_TOKEN;
   
@@ -33,7 +37,7 @@ ${conversationHistory}
 Assistant:`;
 
     console.log('Sending request to Hugging Face API...');
-    const response = await axios.post(
+    const response = await axios.post<HuggingFaceResponse[]>(
       'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2',
       {
         inputs: prompt,
@@ -68,14 +72,22 @@ Assistant:`;
     }
 
     return assistantResponse;
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error generating response:', error);
-    if (axios.isAxiosError(error)) {
-      if (error.response?.status === 429) {
+    
+    // Type guard for axios errors
+    if (error && typeof error === 'object' && 'isAxiosError' in error) {
+      const axiosError = error as { response?: { status: number; data: unknown } };
+      if (axiosError.response?.status === 429) {
         return "I'm currently experiencing high traffic. Please try again in a moment.";
       }
-      console.error('API Error details:', error.response?.data);
+      console.error('API Error details:', axiosError.response?.data);
     }
-    throw new Error('Failed to generate response. Please try again.');
+    
+    throw new Error(
+      error instanceof Error 
+        ? error.message 
+        : 'Failed to generate response. Please try again.'
+    );
   }
 } 

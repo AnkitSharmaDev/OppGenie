@@ -5,6 +5,10 @@ interface Message {
   role: 'user' | 'assistant';
 }
 
+interface HuggingFaceResponse {
+  generated_text: string;
+}
+
 export const generateResponse = async (messages: Message[]): Promise<string> => {
   try {
     const token = import.meta.env.VITE_HF_TOKEN;
@@ -57,13 +61,9 @@ ${conversationHistory}`;
 
     const API_URL = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.1";
 
-    const response = await fetch(API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const response = await axios.post<HuggingFaceResponse[]>(
+      API_URL,
+      {
         inputs: prompt,
         parameters: {
           max_new_tokens: 1000,
@@ -72,13 +72,35 @@ ${conversationHistory}`;
           do_sample: true,
           return_full_text: false
         }
-      }),
-    });
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        }
+      }
+    );
 
-    const result = await response.json();
-    return result[0].generated_text;
-  } catch (error) {
+    if (!response.data || !response.data[0]?.generated_text) {
+      throw new Error('Invalid response from Hugging Face API');
+    }
+
+    return response.data[0].generated_text;
+  } catch (error: unknown) {
     console.error('Error generating response:', error);
-    return 'I apologize, but I encountered an error. Please try again.';
+    
+    if (error && typeof error === 'object' && 'isAxiosError' in error) {
+      const axiosError = error as { response?: { status: number; data: unknown } };
+      if (axiosError.response?.status === 429) {
+        return "I'm currently experiencing high traffic. Please try again in a moment.";
+      }
+      console.error('API Error details:', axiosError.response?.data);
+    }
+
+    throw new Error(
+      error instanceof Error 
+        ? error.message 
+        : 'Failed to generate response. Please try again.'
+    );
   }
 };

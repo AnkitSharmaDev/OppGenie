@@ -14,13 +14,31 @@ interface Opportunity {
   logo?: string;
 }
 
-export const fetchGitHubOpportunities = async (searchQuery: string = '') => {
+interface GitHubRepo {
+  id: number;
+  name: string;
+  owner: {
+    login: string;
+    avatar_url: string;
+  };
+  created_at: string;
+  description: string | null;
+  html_url: string;
+  language: string | null;
+  topics: string[];
+}
+
+interface GitHubResponse {
+  items: GitHubRepo[];
+}
+
+export const fetchGitHubOpportunities = async (searchQuery: string = ''): Promise<Opportunity[]> => {
   try {
     const query = searchQuery ? 
       `${searchQuery} in:name,description,readme good-first-issues:>0` :
       'good-first-issues:>0 help-wanted-issues:>0';
 
-    const response = await axios.get('https://api.github.com/search/repositories', {
+    const response = await axios.get<GitHubResponse>('https://api.github.com/search/repositories', {
       params: {
         q: query,
         sort: 'updated',
@@ -29,7 +47,7 @@ export const fetchGitHubOpportunities = async (searchQuery: string = '') => {
       }
     });
 
-    return response.data.items.map((repo: any) => ({
+    return response.data.items.map((repo) => ({
       id: `gh-${repo.id}`,
       title: repo.name,
       organization: repo.owner.login,
@@ -39,34 +57,57 @@ export const fetchGitHubOpportunities = async (searchQuery: string = '') => {
       deadline: 'Ongoing',
       description: repo.description || 'No description available',
       url: repo.html_url,
-      tags: [repo.language, ...repo.topics || []].filter(Boolean),
+      tags: [repo.language, ...repo.topics || []].filter((tag): tag is string => Boolean(tag)),
       logo: repo.owner.avatar_url
     }));
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error fetching GitHub opportunities:', error);
+    if (error && typeof error === 'object' && 'isAxiosError' in error) {
+      const axiosError = error as { response?: { status: number; data: unknown } };
+      console.error('API Error details:', axiosError.response?.data);
+    }
     return [];
   }
 };
 
-export const fetchLinkedInJobs = async (location: string = '') => {
-  // This would be your backend API endpoint that fetches from LinkedIn
-  const response = await axios.get('/api/linkedin-jobs', {
-    params: { location }
-  }).catch(() => ({ data: { items: [] } }));
+interface JobResponse {
+  items: Array<{
+    id: string;
+    title: string;
+    company: string;
+    location: string;
+    posted_at: string;
+    deadline: string;
+    description: string;
+    url: string;
+    skills: string[];
+    company_logo: string;
+  }>;
+}
 
-  return response.data.items.map((job: any) => ({
-    id: `li-${job.id}`,
-    title: job.title,
-    organization: job.company,
-    type: 'Job',
-    location: job.location,
-    posted: job.posted_at,
-    deadline: job.deadline,
-    description: job.description,
-    url: job.url,
-    tags: job.skills || [],
-    logo: job.company_logo
-  }));
+export const fetchLinkedInJobs = async (location: string = ''): Promise<Opportunity[]> => {
+  try {
+    const response = await axios.get<JobResponse>('/api/linkedin-jobs', {
+      params: { location }
+    });
+
+    return response.data.items.map(job => ({
+      id: `li-${job.id}`,
+      title: job.title,
+      organization: job.company,
+      type: 'Job',
+      location: job.location,
+      posted: job.posted_at,
+      deadline: job.deadline,
+      description: job.description,
+      url: job.url,
+      tags: job.skills,
+      logo: job.company_logo
+    }));
+  } catch (error: unknown) {
+    console.error('Error fetching LinkedIn jobs:', error);
+    return [];
+  }
 };
 
 export const fetchIndeedJobs = async (location: string = '') => {
