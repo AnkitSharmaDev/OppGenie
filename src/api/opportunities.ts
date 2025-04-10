@@ -11,7 +11,9 @@ export interface Opportunity {
   description: string;
   category: string;
   source: string;
-  location?: string; // Making location optional
+  location?: string;
+  tags?: string[];
+  logo?: string;
 }
 
 interface GitHubRepo {
@@ -30,45 +32,6 @@ interface GitHubRepo {
 
 interface GitHubResponse {
   items: GitHubRepo[];
-}
-
-// Fetch opportunities from multiple sources
-export async function fetchOpportunities(category?: string, location?: string): Promise<Opportunity[]> {
-  try {
-    const opportunities: Opportunity[] = [];
-    
-    // Fetch from GitHub
-    const githubOpps = await fetchGitHubOpportunities();
-    opportunities.push(...githubOpps);
-    
-    // Fetch custom curated opportunities
-    const customOpps = await fetchCustomOpportunities();
-    opportunities.push(...customOpps);
-    
-    let filteredOpps = opportunities;
-    
-    // Filter by category if provided
-    if (category) {
-      filteredOpps = filteredOpps.filter(opp => 
-        opp.category.toLowerCase() === category.toLowerCase()
-      );
-    }
-    
-    // Filter by location if provided
-    if (location) {
-      const searchLocation = location.toLowerCase();
-      filteredOpps = filteredOpps.filter(opp => {
-        if (!opp.location) return true; // Include if location is not specified
-        const oppLocation = opp.location.toLowerCase();
-        return oppLocation.includes(searchLocation) || oppLocation === 'remote';
-      });
-    }
-    
-    return filteredOpps;
-  } catch (error) {
-    console.error('Error fetching opportunities:', error);
-    throw error;
-  }
 }
 
 // Main GitHub opportunities fetching function
@@ -98,7 +61,9 @@ export async function fetchGitHubOpportunities(searchQuery?: string): Promise<Op
       description: repo.description || 'No description available',
       category: 'Technology',
       source: 'GitHub',
-      location: 'Remote'
+      location: 'Remote',
+      tags: [repo.language, ...repo.topics].filter((tag): tag is string => tag !== null),
+      logo: repo.owner.avatar_url
     }));
   } catch (error) {
     console.error('Error fetching GitHub opportunities:', error);
@@ -120,7 +85,9 @@ async function fetchCustomOpportunities(): Promise<Opportunity[]> {
       description: 'The Young Leaders Initiative recognizes young people who are leading efforts to combat world\'s most pressing issues.',
       category: 'Social',
       source: 'Custom',
-      location: 'Global'
+      location: 'Global',
+      tags: ['Leadership', 'Social Impact', 'Youth Development'],
+      logo: 'https://www.un.org/sites/un2.un.org/themes/bootstrap_un/images/united-nations-logo-white.svg'
     },
     {
       id: 'custom-2',
@@ -133,40 +100,54 @@ async function fetchCustomOpportunities(): Promise<Opportunity[]> {
       description: 'One-year paid fellowship for young professionals passionate about global health equity.',
       category: 'Healthcare',
       source: 'Custom',
-      location: 'Multiple Locations'
+      location: 'Multiple Locations',
+      tags: ['Healthcare', 'Fellowship', 'Global Health'],
+      logo: 'https://ghcorps.org/wp-content/themes/ghc/images/logo.png'
     }
   ];
 }
 
+// Function to get all opportunities with optional filtering
+export async function fetchAllOpportunities(searchQuery: string = '', location: string = ''): Promise<Opportunity[]> {
+  try {
+    const githubOpps = await fetchGitHubOpportunities(searchQuery);
+    const customOpps = await fetchCustomOpportunities();
+    
+    const allOpportunities = [...githubOpps, ...customOpps];
+    
+    // Filter by location if provided
+    if (location) {
+      const searchLocation = location.toLowerCase();
+      return allOpportunities.filter(opp => {
+        if (!opp.location) return true;
+        const oppLocation = opp.location.toLowerCase();
+        return oppLocation.includes(searchLocation) || oppLocation === 'remote';
+      });
+    }
+    
+    return allOpportunities;
+  } catch (error) {
+    console.error('Error fetching opportunities:', error);
+    return [];
+  }
+}
+
 // Function to get trending opportunities
 export async function getTrendingOpportunities(): Promise<Opportunity[]> {
-  const allOpportunities = await fetchOpportunities();
+  const allOpportunities = await fetchAllOpportunities();
   // Sort by some trending criteria (could be based on views, applications, etc.)
   return allOpportunities.sort(() => Math.random() - 0.5).slice(0, 10);
 }
 
 // Function to get opportunities by search term
 export async function searchOpportunities(query: string): Promise<Opportunity[]> {
-  const allOpportunities = await fetchOpportunities();
+  const allOpportunities = await fetchAllOpportunities();
   const searchTerm = query.toLowerCase();
   return allOpportunities.filter(opp => 
     opp.title.toLowerCase().includes(searchTerm) ||
     opp.description.toLowerCase().includes(searchTerm) ||
     opp.organization.toLowerCase().includes(searchTerm)
   );
-}
-
-// Function to get all opportunities with optional filtering
-export async function fetchAllOpportunities(searchQuery?: string): Promise<Opportunity[]> {
-  try {
-    const githubOpps = await fetchGitHubOpportunities(searchQuery);
-    const customOpps = await fetchCustomOpportunities();
-    
-    return [...githubOpps, ...customOpps];
-  } catch (error) {
-    console.error('Error fetching opportunities:', error);
-    return [];
-  }
 }
 
 async function fetchLinkedInOpportunities(): Promise<Opportunity[]> {
@@ -236,61 +217,4 @@ export const fetchVolunteerOpportunities = async (location: string = '') => {
     tags: opp.categories || [],
     logo: opp.organization_logo
   }));
-};
-
-// Mock data for other opportunity types since we don't have real APIs yet
-const generateMockOpportunities = (type: string, count: number, location: string = ''): Opportunity[] => {
-  const opportunities: Opportunity[] = [];
-  const skills = ['JavaScript', 'Python', 'React', 'Node.js', 'Data Science', 'UI/UX', 'Product Management'];
-  const companies = ['Tech Corp', 'Innovation Labs', 'Digital Solutions', 'Future Systems', 'Green Tech'];
-  
-  for (let i = 0; i < count; i++) {
-    const randomSkills = skills.sort(() => 0.5 - Math.random()).slice(0, 3);
-    const company = companies[Math.floor(Math.random() * companies.length)];
-    
-    opportunities.push({
-      id: `${type.toLowerCase()}-${i}`,
-      title: `${type} Opportunity ${i + 1}`,
-      organization: company,
-      type,
-      location: location || 'Remote',
-      posted: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-      deadline: new Date(Date.now() + Math.random() * 30 * 24 * 60 * 60 * 1000).toLocaleDateString(),
-      description: `Exciting ${type.toLowerCase()} opportunity to work on cutting-edge projects.`,
-      url: '#',
-      tags: randomSkills,
-      logo: `https://ui-avatars.com/api/?name=${encodeURIComponent(company)}&background=random`
-    });
-  }
-  
-  return opportunities;
-};
-
-export const fetchAllOpportunities = async (searchQuery: string = '', location: string = '') => {
-  try {
-    const githubOpps = await fetchGitHubOpportunities(searchQuery);
-    
-    // Generate mock data for other types
-    const mockJobs = generateMockOpportunities('Job', 3, location);
-    const mockInternships = generateMockOpportunities('Internship', 3, location);
-    const mockVolunteer = generateMockOpportunities('Volunteer', 3, location);
-
-    const allOpportunities = [
-      ...githubOpps,
-      ...mockJobs,
-      ...mockInternships,
-      ...mockVolunteer
-    ];
-
-    // Filter by location if provided
-    return location ? 
-      allOpportunities.filter(opp => 
-        opp.location.toLowerCase().includes(location.toLowerCase()) ||
-        opp.location === 'Remote'
-      ) : 
-      allOpportunities;
-  } catch (error) {
-    console.error('Error fetching opportunities:', error);
-    return [];
-  }
 }; 
