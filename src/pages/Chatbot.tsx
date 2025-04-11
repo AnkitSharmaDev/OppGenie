@@ -4,6 +4,7 @@ import { Loader2, Send, Trash2 } from 'lucide-react';
 import { generateResponse } from '../api/chat';
 import { db } from '../firebase';
 import { collection, query, orderBy, addDoc, serverTimestamp, where, onSnapshot, deleteDoc, getDocs } from 'firebase/firestore';
+
 import { useAuth } from '../hooks/useAuth';
 import { toast } from 'sonner';
 

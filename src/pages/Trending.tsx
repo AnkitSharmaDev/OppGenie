@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, ChevronRight, Leaf, Code, GraduationCap, Heart, Users, Briefcase, Globe, BookOpen } from 'lucide-react';
+import { TrendingUp, ChevronRight, Leaf, Code, GraduationCap, Heart, Users, Briefcase, Globe, ExternalLink } from 'lucide-react';
 import { getTrendingOpportunities, Opportunity } from '../api/opportunities';
 import { useNavigate } from 'react-router-dom';
 
@@ -11,11 +11,11 @@ interface CategoryCount {
 }
 
 const categories = [
-  { name: 'Environment', color: 'bg-green-500', icon: <Leaf className="w-5 h-5" /> },
   { name: 'Technology', color: 'bg-blue-500', icon: <Code className="w-5 h-5" /> },
-  { name: 'Education', color: 'bg-yellow-500', icon: <BookOpen className="w-5 h-5" /> },
-  { name: 'Social', color: 'bg-purple-500', icon: <Users className="w-5 h-5" /> },
+  { name: 'Education', color: 'bg-yellow-500', icon: <GraduationCap className="w-5 h-5" /> },
   { name: 'Healthcare', color: 'bg-pink-500', icon: <Heart className="w-5 h-5" /> },
+  { name: 'Social', color: 'bg-purple-500', icon: <Users className="w-5 h-5" /> },
+  { name: 'Environment', color: 'bg-green-500', icon: <Leaf className="w-5 h-5" /> },
   { name: 'Global', color: 'bg-indigo-500', icon: <Globe className="w-5 h-5" /> },
 ];
 
@@ -32,6 +32,14 @@ const container = {
 const item = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0 },
+};
+
+// Add a function to generate fallback logo
+const generateFallbackLogo = (organization: string) => {
+  const letter = organization.charAt(0).toUpperCase();
+  const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+  const color = colors[Math.floor(Math.random() * colors.length)];
+  return `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="${color}"/><text x="20" y="20" text-anchor="middle" dy="7" fill="white" font-family="Arial" font-size="20">${letter}</text></svg>`;
 };
 
 export default function Trending() {
@@ -56,13 +64,13 @@ export default function Trending() {
   }, []);
 
   const handleOpportunityClick = (opp: Opportunity) => {
-    // Navigate to opportunity detail page
-    navigate(`/opportunity/${opp.id}`, { state: { opportunity: opp } });
+    // Navigate to the opportunity detail page
+    navigate(`/opportunity/${opp.id}`);
   };
 
   const handleCategoryClick = (category: string) => {
-    // Navigate to filtered opportunities page
-    navigate(`/opportunities?category=${category}`);
+    // Navigate to category opportunities page with the exact category name
+    navigate(`/category?category=${category}`);
   };
 
   if (loading) {
@@ -108,7 +116,7 @@ export default function Trending() {
             transition={{ delay: 0.1 }}
             className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4"
           >
-            Popular Opportunity Categories
+            Popular Opportunities
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: -20 }}
@@ -116,7 +124,7 @@ export default function Trending() {
             transition={{ delay: 0.2 }}
             className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto"
           >
-            Discover what's trending in the world of opportunities and stay ahead of the curve
+            Discover trending opportunities from top organizations and open source projects
           </motion.p>
         </div>
 
@@ -158,37 +166,66 @@ export default function Trending() {
               variants={item}
               whileHover={{ scale: 1.02 }}
               onClick={() => handleOpportunityClick(opp)}
-              className="glass p-6 rounded-xl cursor-pointer"
+              className="glass p-6 rounded-xl cursor-pointer hover:shadow-lg transition-shadow duration-200"
             >
               <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
-                    {opp.title}
-                  </h3>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {opp.organization}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1 text-green-500">
-                  <span className="text-sm font-medium">{opp.type}</span>
+                <div className="flex items-center gap-3">
+                  <img 
+                    src={opp.logo || generateFallbackLogo(opp.organization)}
+                    alt={`${opp.organization} logo`} 
+                    className="w-10 h-10 rounded-full object-cover"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.onerror = null; // Prevent infinite loop
+                      target.src = generateFallbackLogo(opp.organization);
+                    }}
+                  />
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+                      {opp.title}
+                    </h3>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {opp.organization}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <p className="text-gray-600 dark:text-gray-300 text-sm mb-4">
-                {opp.description.slice(0, 150)}...
+              <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-3">
+                {opp.description}
               </p>
 
+              <div className="flex flex-wrap gap-2 mb-4">
+                {opp.tags?.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-dark-700 text-gray-600 dark:text-gray-300 rounded-full"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  Deadline: {opp.deadline}
-                </span>
-                <motion.button
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                    opp.type === 'Open Source' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
+                    opp.type === 'Internship' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' :
+                    'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
+                  }`}>
+                    {opp.type}
+                  </span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {opp.deadline}
+                  </span>
+                </div>
+                <motion.div
                   whileHover={{ x: 5 }}
                   className="text-primary-500 dark:text-primary-400 inline-flex items-center gap-1 text-sm font-medium"
                 >
-                  Learn More
-                  <ChevronRight className="w-4 h-4" />
-                </motion.button>
+                  Apply Now
+                  <ExternalLink className="w-4 h-4" />
+                </motion.div>
               </div>
             </motion.div>
           ))}

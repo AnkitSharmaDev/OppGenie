@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, Calendar, MapPin, ExternalLink, Filter } from 'lucide-react';
 import { fetchAllOpportunities, Opportunity } from '../api/opportunities';
-import { useNavigate } from 'react-router-dom';
+import { ExternalLink, ArrowLeft } from 'lucide-react';
 
 const container = {
   hidden: { opacity: 0 },
@@ -27,52 +27,45 @@ const generateFallbackLogo = (organization: string) => {
   return `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="${color}"/><text x="20" y="20" text-anchor="middle" dy="7" fill="white" font-family="Arial" font-size="20">${letter}</text></svg>`;
 };
 
-const opportunityTypes = ['All Types', 'Internship', 'Volunteer', 'Job', 'Research', 'Fellowship'];
-
-export default function New() {
+export default function CategoryOpportunities() {
+  const [searchParams] = useSearchParams();
+  const category = searchParams.get('category');
+  const navigate = useNavigate();
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [filteredOpportunities, setFilteredOpportunities] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState('All Types');
-  const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchOpps = async () => {
+    const fetchOpportunities = async () => {
+      if (!category) {
+        setError('No category specified');
+        setLoading(false);
+        return;
+      }
+
       try {
-        const opps = await fetchAllOpportunities();
-        // Sort opportunities by deadline
-        const sortedOpps = opps.sort((a, b) => {
-          if (a.deadline === 'Rolling Applications') return -1;
-          if (b.deadline === 'Rolling Applications') return 1;
-          return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+        const allOpps = await fetchAllOpportunities();
+        console.log('Category:', category);
+        console.log('All opportunities:', allOpps);
+        
+        // Filter opportunities by exact category name
+        const filteredOpps = allOpps.filter(opp => {
+          console.log('Comparing:', opp.category, category);
+          return opp.category === category;
         });
-        setOpportunities(sortedOpps);
-        setFilteredOpportunities(sortedOpps);
+        
+        console.log('Filtered opportunities:', filteredOpps);
+        setOpportunities(filteredOpps);
         setLoading(false);
       } catch (err) {
+        console.error('Error fetching opportunities:', err);
         setError('Failed to load opportunities. Please try again later.');
         setLoading(false);
       }
     };
 
-    fetchOpps();
-  }, []);
-
-  useEffect(() => {
-    const filtered = opportunities.filter(opp => {
-      const matchesSearch = searchTerm === '' || 
-        opp.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        opp.organization.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        opp.description.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesType = selectedType === 'All Types' || opp.type === selectedType;
-      
-      return matchesSearch && matchesType;
-    });
-    setFilteredOpportunities(filtered);
-  }, [searchTerm, selectedType, opportunities]);
+    fetchOpportunities();
+  }, [category]);
 
   const handleOpportunityClick = (opp: Opportunity) => {
     navigate(`/opportunity/${opp.id}`);
@@ -106,60 +99,36 @@ export default function New() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-dark-900 dark:to-dark-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
-        <div className="text-center mb-12">
+        <div className="mb-12">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400 mb-6"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
           <motion.h1
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4"
           >
-            Latest Opportunities
+            {category} Opportunities
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-gray-600 dark:text-gray-300 max-w-2xl mx-auto"
+            className="text-gray-600 dark:text-gray-300"
           >
-            Discover fresh opportunities updated daily
+            Discover opportunities in {category?.toLowerCase()}
           </motion.p>
         </div>
 
-        {/* Search and Filter */}
-        <div className="mb-8 flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search opportunities..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-dark-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-          <div className="flex gap-2 overflow-x-auto pb-2 md:pb-0">
-            {opportunityTypes.map((type) => (
-              <button
-                key={type}
-                onClick={() => setSelectedType(type)}
-                className={`px-4 py-2 rounded-lg whitespace-nowrap ${
-                  selectedType === type
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-gray-100 dark:bg-dark-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600'
-                }`}
-              >
-                {type}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Opportunities Grid */}
-        {filteredOpportunities.length === 0 ? (
+        {opportunities.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-600 dark:text-gray-400">
-              No opportunities found matching your criteria.
+              No opportunities found in this category. Check back later!
             </p>
           </div>
         ) : (
@@ -169,7 +138,7 @@ export default function New() {
             animate="show"
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
           >
-            {filteredOpportunities.map((opp) => (
+            {opportunities.map((opp) => (
               <motion.div
                 key={opp.id}
                 variants={item}
@@ -185,7 +154,7 @@ export default function New() {
                       className="w-10 h-10 rounded-full object-cover"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
-                        target.onerror = null;
+                        target.onerror = null; // Prevent infinite loop
                         target.src = generateFallbackLogo(opp.organization);
                       }}
                     />
@@ -232,7 +201,7 @@ export default function New() {
                     whileHover={{ x: 5 }}
                     className="text-primary-500 dark:text-primary-400 inline-flex items-center gap-1 text-sm font-medium"
                   >
-                    Learn More
+                    Apply Now
                     <ExternalLink className="w-4 h-4" />
                   </motion.div>
                 </div>

@@ -9,6 +9,7 @@ import Register from '../pages/Register';
 import ProtectedRoute from '../components/ProtectedRoute';
 import Layout from '../components/Layout';
 import OpportunityDetail from '../pages/OpportunityDetail';
+import CategoryOpportunities from '../pages/CategoryOpportunities';
 
 export default function AppRouter() {
   return (
@@ -17,33 +18,13 @@ export default function AppRouter() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="/chat" element={<Chatbot />} />
-          <Route
-            path="/trending"
-            element={
-              <ProtectedRoute>
-                <Trending />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/new"
-            element={
-              <ProtectedRoute>
-                <New />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/opportunity/:id"
-            element={
-              <ProtectedRoute>
-                <OpportunityDetail />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/trending" element={<Trending />} />
+          <Route path="/category" element={<CategoryOpportunities />} />
+          <Route path="/new" element={<ProtectedRoute><New /></ProtectedRoute>} />
+          <Route path="/opportunity/:id" element={<OpportunityDetail />} />
         </Route>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
       </Routes>
     </Router>
   );
