@@ -52,43 +52,52 @@ export default function Chatbot() {
     const RETRY_DELAY = 2000; // 2 seconds
 
     const setupFirestoreListener = () => {
-      const q = query(
-        collection(db, 'messages'),
-        where('userId', '==', user.uid),
-        orderBy('timestamp', 'asc')
-      );
+      try {
+        const q = query(
+          collection(db, 'messages'),
+          where('userId', '==', user.uid),
+          orderBy('timestamp', 'asc')
+        );
 
-      const unsubscribe = onSnapshot(q, 
-        (snapshot) => {
-          const newMessages: Message[] = [];
-          snapshot.forEach((doc) => {
-            const data = doc.data();
-            newMessages.push({
-              id: doc.id,
-              role: data.role,
-              content: data.content,
-              timestamp: data.timestamp
+        const unsubscribe = onSnapshot(q, 
+          (snapshot) => {
+            const newMessages: Message[] = [];
+            snapshot.forEach((doc) => {
+              const data = doc.data();
+              newMessages.push({
+                id: doc.id,
+                role: data.role,
+                content: data.content,
+                timestamp: data.timestamp
+              });
             });
-          });
-          setMessages(newMessages);
-          setRetryCount(0); // Reset retry count on success
-        }, 
-        (error) => {
-          console.error('Error fetching messages:', error);
-          toast.error('Failed to load messages. Retrying...');
-          
-          if (retryCount < MAX_RETRIES) {
-            setTimeout(() => {
-              setRetryCount(prev => prev + 1);
-              setupFirestoreListener();
-            }, RETRY_DELAY * (retryCount + 1));
-          } else {
-            toast.error('Could not connect to the chat service. Please check your internet connection or try disabling ad blockers.');
+            setMessages(newMessages);
+            setRetryCount(0); // Reset retry count on success
+          }, 
+          (error) => {
+            console.error('Error fetching messages:', error);
+            
+            // Check if error is due to ad blocker or network issues
+            if (error.code === 'permission-denied' || error.code === 'unavailable') {
+              toast.error('Unable to connect to chat service. Please check your internet connection or disable ad blockers.');
+            } else if (retryCount < MAX_RETRIES) {
+              toast.error('Failed to load messages. Retrying...');
+              setTimeout(() => {
+                setRetryCount(prev => prev + 1);
+                setupFirestoreListener();
+              }, RETRY_DELAY * (retryCount + 1));
+            } else {
+              toast.error('Could not connect to the chat service. Please refresh the page or try again later.');
+            }
           }
-        }
-      );
+        );
 
-      return unsubscribe;
+        return unsubscribe;
+      } catch (error) {
+        console.error('Error setting up Firestore listener:', error);
+        toast.error('Failed to initialize chat. Please refresh the page.');
+        return () => {}; // Return empty cleanup function
+      }
     };
 
     const unsubscribe = setupFirestoreListener();
@@ -146,13 +155,27 @@ export default function Chatbot() {
           break;
         } catch (error) {
           attempts++;
-          if (attempts === MAX_ATTEMPTS) throw error;
+          if (attempts === MAX_ATTEMPTS) {
+            console.error('Failed to save message:', error);
+            toast.error('Failed to send message. Please check your internet connection or try disabling ad blockers.');
+            setIsLoading(false);
+            return;
+          }
           await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
         }
       }
 
       // Generate AI response
-      const response = await generateResponse([...messages, userMessage]);
+      let response: string;
+      try {
+        response = await generateResponse([...messages, userMessage]);
+      } catch (error) {
+        console.error('Error generating AI response:', error);
+        response = "I apologize, but I'm currently experiencing technical difficulties. In the meantime, you can:\n\n" +
+                  "1. Browse our Opportunities page for the latest listings\n" +
+                  "2. Use the search feature to find specific opportunities\n" +
+                  "3. Try asking your question again in a few minutes";
+      }
 
       // Add AI response to Firestore with retry logic
       attempts = 0;
@@ -167,13 +190,17 @@ export default function Chatbot() {
           break;
         } catch (error) {
           attempts++;
-          if (attempts === MAX_ATTEMPTS) throw error;
+          if (attempts === MAX_ATTEMPTS) {
+            console.error('Failed to save AI response:', error);
+            toast.error('Failed to save response. Please check your connection.');
+            break;
+          }
           await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
         }
       }
     } catch (error) {
       console.error('Error processing message:', error);
-      toast.error('Failed to send message. Please check your internet connection or try disabling ad blockers.');
+      toast.error('Failed to process message. Please try again.');
     } finally {
       setIsLoading(false);
     }

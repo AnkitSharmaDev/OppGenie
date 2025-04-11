@@ -1,41 +1,59 @@
 import axios from 'axios';
-import { isAxiosError } from 'axios';
-
-interface AxiosErrorResponse {
-  response?: {
-    status: number;
-    data: unknown;
-  };
-}
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
 
-interface HuggingFaceResponse {
-  generated_text: string;
+interface OpenRouterResponse {
+  choices: Array<{
+    message: {
+      content: string;
+    };
+  }>;
+}
+
+interface APIError {
+  code?: string;
+  response?: {
+    status?: number;
+  };
+  isAxiosError?: boolean;
 }
 
 export async function generateResponse(messages: Message[]): Promise<string> {
-  const token = import.meta.env.VITE_HUGGINGFACE_API_TOKEN;
+  // You can get a free API key from https://openrouter.ai/keys
+  const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
   
-  if (!token) {
-    console.error('Hugging Face API token not found. Please set VITE_HUGGINGFACE_API_TOKEN in your .env file.');
+  if (!OPENROUTER_API_KEY) {
+    console.error('OpenRouter API key not found. Please set VITE_OPENROUTER_API_KEY in your .env file.');
     throw new Error('API configuration error. Please check your environment variables.');
   }
 
   try {
-    // Format conversation history
-    const conversationHistory = messages.map(msg => 
-      `${msg.role === 'user' ? 'Human' : 'Assistant'}: ${msg.content}`
-    ).join('\n');
+    // Add a pre-conversation message to reinforce identity
+    const conversationMessages = [
+      {
+        role: 'system',
+        content: `IMPORTANT: You are OppGenie. This is your ONLY identity. Never apologize for or reference being any other AI. Never mention other AI companies or models.
 
-    // Construct the prompt
-    const prompt = `You are OppGenie, a helpful AI assistant focused on helping people find opportunities across all domains and fields.
-Your goal is to provide specific, actionable opportunities and advice tailored to the user's interests and field.
+Your core identity:
+- Name: OppGenie
+- Purpose: Helping people discover opportunities
+- Expertise: Finding internships, jobs, scholarships, and career opportunities
+- Personality: Professional, friendly, and enthusiastic about helping others succeed
 
-When suggesting opportunities, ALWAYS follow this exact format for EACH opportunity:
+When asked "who are you" or similar questions, ONLY respond with:
+"I am OppGenie, your dedicated assistant for discovering opportunities! I help people find internships, jobs, scholarships, and other career opportunities. I'm here to help you find the perfect opportunity - what are you looking for?"
+
+For ALL responses:
+- Always speak as OppGenie
+- Never apologize for or mention being any other AI
+- Never reference any AI companies or models
+- Focus on opportunities and career guidance
+- Be confident in your OppGenie identity
+
+When suggesting opportunities, use this format:
 
 📌 [OPPORTUNITY TITLE]
 🏢 Organization: [Organization Name]
@@ -43,64 +61,60 @@ When suggesting opportunities, ALWAYS follow this exact format for EACH opportun
 📅 Deadline: [Deadline or "Rolling/Ongoing"]
 💡 Eligibility: [Key eligibility criteria]
 🔗 Direct Link: [Clickable application/info link]
-📝 How to Apply: [Brief, step-by-step process]
+📝 How to Apply: [Brief, step-by-step process]`
+      },
+      ...messages.map(msg => ({
+        role: msg.role,
+        content: msg.content
+      }))
+    ];
 
-Current conversation:
-${conversationHistory}
-Assistant:`;
-
-    console.log('Sending request to Hugging Face API...');
-    const response = await axios.post<HuggingFaceResponse[]>(
-      'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2',
+    const response = await axios.post<OpenRouterResponse>(
+      'https://openrouter.ai/api/v1/chat/completions',
       {
-        inputs: prompt,
-        parameters: {
-          max_new_tokens: 500,
-          temperature: 0.7,
-          top_p: 0.95,
-          repetition_penalty: 1.15,
-          do_sample: true
-        }
+        model: 'anthropic/claude-2',
+        messages: conversationMessages,
+        temperature: 0.7,
+        max_tokens: 1000,
       },
       {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+          'HTTP-Referer': window.location.href,
+          'X-Title': 'OppGenie Chat',
+        },
+        timeout: 30000
       }
     );
 
-    if (!response.data || !response.data[0] || !response.data[0].generated_text) {
-      console.error('Invalid API response:', response.data);
+    if (!response.data?.choices?.[0]?.message?.content) {
       throw new Error('Invalid response format from API');
     }
 
-    // Extract the assistant's response from the generated text
-    const generatedText = response.data[0].generated_text;
-    const assistantResponse = generatedText.split('Assistant:').pop()?.trim();
+    return response.data.choices[0].message.content;
 
-    if (!assistantResponse) {
-      console.error('Could not extract response from:', generatedText);
-      throw new Error('Could not extract assistant response');
-    }
-
-    return assistantResponse;
-  } catch (error: unknown) {
+  } catch (error) {
     console.error('Error generating response:', error);
     
-    // Type guard for axios errors
-    if (error && typeof error === 'object' && 'response' in error) {
-      const axiosError = error as AxiosErrorResponse;
-      if (axiosError.response?.status === 429) {
-        return "I'm currently experiencing high traffic. Please try again in a moment.";
+    const apiError = error as APIError;
+    
+    if (apiError.isAxiosError) {
+      if (apiError.code === 'ECONNABORTED') {
+        return "I'm sorry, but the request timed out. Please try again.";
       }
-      console.error('API Error details:', axiosError.response?.data);
+      
+      switch (apiError.response?.status) {
+        case 401:
+          return "I apologize, but there seems to be an issue with the AI service configuration. Please contact support.";
+        case 429:
+          return "I'm currently experiencing high traffic. Please try again in a moment.";
+        case 500:
+          return "The AI service is temporarily unavailable. Please try again later.";
+        default:
+          return "I encountered an error while processing your request. Please try again.";
+      }
     }
     
-    throw new Error(
-      error instanceof Error 
-        ? error.message 
-        : 'Failed to generate response. Please try again.'
-    );
+    return "I apologize, but I'm having trouble processing your request. Please try again in a moment.";
   }
 } 

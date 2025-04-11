@@ -83,14 +83,14 @@ async function fetchCustomOpportunities(): Promise<Opportunity[]> {
   return [
     // Technology Category
     {
-      id: 'gsoc-2024',
-      title: 'Google Summer of Code 2024',
+      id: 'gsoc-2025',
+      title: 'Google Summer of Code 2025',
       organization: 'Google',
       type: 'Internship',
-      deadline: '2024-04-02',
+      deadline: '2025-04-02',
       eligibility: 'University students 18 years or older',
       link: 'https://summerofcode.withgoogle.com/',
-      description: 'Google Summer of Code 2024 is now open! Join this global program focused on bringing more student developers into open source software development. Stipend ranges from $1500-$3300.',
+      description: 'Google Summer of Code 2025 is now open! Join this global program focused on bringing more student developers into open source software development. Stipend ranges from $1500-$3300.',
       category: 'Technology',
       source: 'Custom',
       location: 'Remote',
@@ -99,14 +99,14 @@ async function fetchCustomOpportunities(): Promise<Opportunity[]> {
       trending: true
     },
     {
-      id: 'mlh-fellowship-2024',
-      title: 'MLH Fellowship Summer 2024',
+      id: 'mlh-fellowship-2025',
+      title: 'MLH Fellowship Summer 2025',
       organization: 'Major League Hacking',
       type: 'Fellowship',
-      deadline: '2024-03-31',
+      deadline: '2025-03-31',
       eligibility: 'Students and recent graduates',
       link: 'https://fellowship.mlh.io/',
-      description: 'Applications are now open for MLH Fellowship Summer 2024 batch. Get paid to contribute to real open source projects and build your portfolio. $5000 stipend for 12 weeks.',
+      description: 'Applications are now open for MLH Fellowship Summer 2025 batch. Get paid to contribute to real open source projects and build your portfolio. $5000 stipend for 12 weeks.',
       category: 'Technology',
       source: 'Custom',
       location: 'Remote',
@@ -115,11 +115,11 @@ async function fetchCustomOpportunities(): Promise<Opportunity[]> {
       trending: true
     },
     {
-      id: 'microsoft-internship-2024',
-      title: 'Microsoft Summer Internship 2024',
+      id: 'microsoft-internship-2025',
+      title: 'Microsoft Summer Internship 2025',
       organization: 'Microsoft',
       type: 'Internship',
-      deadline: '2024-03-15',
+      deadline: '2025-03-15',
       eligibility: 'Current students in Computer Science or related fields',
       link: 'https://careers.microsoft.com/students/',
       description: 'Join Microsoft as a summer intern! Work on real projects that matter and shape the future of technology. Competitive compensation and housing assistance provided.',

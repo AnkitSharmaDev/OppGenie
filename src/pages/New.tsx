@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Search, Calendar, MapPin, ExternalLink, Filter } from 'lucide-react';
 import { fetchAllOpportunities, Opportunity } from '../api/opportunities';
 import { useNavigate } from 'react-router-dom';
+import { generateFallbackLogo } from '../utils/logo';
 
 const container = {
   hidden: { opacity: 0 },
@@ -17,14 +18,6 @@ const container = {
 const item = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0 },
-};
-
-// Add a function to generate fallback logo
-const generateFallbackLogo = (organization: string) => {
-  const letter = organization.charAt(0).toUpperCase();
-  const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
-  const color = colors[Math.floor(Math.random() * colors.length)];
-  return `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="${color}"/><text x="20" y="20" text-anchor="middle" dy="7" fill="white" font-family="Arial" font-size="20">${letter}</text></svg>`;
 };
 
 const opportunityTypes = ['All Types', 'Internship', 'Volunteer', 'Job', 'Research', 'Fellowship'];
@@ -42,12 +35,23 @@ export default function New() {
     const fetchOpps = async () => {
       try {
         const opps = await fetchAllOpportunities();
-        // Sort opportunities by deadline
-        const sortedOpps = opps.sort((a, b) => {
-          if (a.deadline === 'Rolling Applications') return -1;
-          if (b.deadline === 'Rolling Applications') return 1;
+        // Filter out opportunities older than a month and sort by deadline
+        const currentDate = new Date();
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(currentDate.getMonth() - 1);
+
+        const currentOpps = opps.filter(opp => {
+          if (opp.deadline === 'Rolling Applications' || opp.deadline === 'Ongoing') return true;
+          const deadlineDate = new Date(opp.deadline);
+          return deadlineDate >= oneMonthAgo;
+        });
+
+        const sortedOpps = currentOpps.sort((a, b) => {
+          if (a.deadline === 'Rolling Applications' || a.deadline === 'Ongoing') return -1;
+          if (b.deadline === 'Rolling Applications' || b.deadline === 'Ongoing') return 1;
           return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
         });
+        
         setOpportunities(sortedOpps);
         setFilteredOpportunities(sortedOpps);
         setLoading(false);
@@ -188,6 +192,7 @@ export default function New() {
                         target.onerror = null;
                         target.src = generateFallbackLogo(opp.organization);
                       }}
+                      loading="lazy"
                     />
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
@@ -231,6 +236,10 @@ export default function New() {
                   <motion.div
                     whileHover={{ x: 5 }}
                     className="text-primary-500 dark:text-primary-400 inline-flex items-center gap-1 text-sm font-medium"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/opportunity/${opp.id}`);
+                    }}
                   >
                     Learn More
                     <ExternalLink className="w-4 h-4" />

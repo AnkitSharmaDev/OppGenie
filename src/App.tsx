@@ -15,6 +15,7 @@ import AdminPanel from './pages/AdminPanel';
 import Settings from './pages/Settings';
 import Footer from './components/Footer';
 import { motion } from 'framer-motion';
+import OpportunityDetail from './pages/OpportunityDetail';
 
 function Navigation() {
   const { user, signOut } = useAuth();
@@ -173,6 +174,12 @@ function App() {
                 user && user.email === import.meta.env.VITE_ADMIN_EMAIL ? 
                 <AdminPanel /> : 
                 <Navigate to="/" replace />
+              }
+            />
+            <Route 
+              path="/opportunity/:id" 
+              element={
+                user ? <OpportunityDetail /> : <Navigate to="/login" state={{ from: location }} replace />
               }
             />
             <Route path="*" element={<Navigate to="/" replace />} />
