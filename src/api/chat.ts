@@ -152,7 +152,7 @@ export async function generateResponse(messages: Message[]): Promise<string> {
         }]
       }]
     };
-
+// using new model
     const response = await axios.post<GeminiResponse>(
       'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
       requestData,
