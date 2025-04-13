@@ -234,7 +234,7 @@ export default function Chatbot() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask about opportunities..."
-          className="w-full p-4 pr-12 rounded-lg border bg-background"
+          className="w-full p-4 pr-12 rounded-lg border bg-background text-black"
           disabled={isLoading}
         />
         <button

@@ -2,8 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Calendar, MapPin, ExternalLink, ArrowLeft } from 'lucide-react';
-import { fetchAllOpportunities, Opportunity } from '../api/opportunities';
+import { fetchAllOpportunities } from '../api/opportunities';
 import { generateFallbackLogo } from '../utils/logo';
+import { Spin } from 'antd';
+
+interface Opportunity {
+  id: string;
+  title: string;
+  organization: string;
+  description: string;
+  eligibility: string;
+  deadline: string;
+  location?: string;
+  link: string;
+  logo?: string;
+  tags?: string[];
+}
 
 export default function OpportunityDetail() {
   const { id } = useParams();
@@ -35,7 +49,7 @@ export default function OpportunityDetail() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary-500"></div>
+        <Spin size="large" />
       </div>
     );
   }
@@ -47,7 +61,7 @@ export default function OpportunityDetail() {
           <p className="text-red-500 mb-4">{error}</p>
           <button
             onClick={() => navigate('/new')}
-            className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
           >
             Back to Opportunities
           </button>
@@ -57,13 +71,13 @@ export default function OpportunityDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-dark-900 dark:to-dark-800">
+    <div className="min-h-screen bg-white dark:bg-gray-900">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <motion.button
           initial={{ x: -10, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           onClick={() => navigate('/new')}
-          className="mb-8 flex items-center text-gray-600 dark:text-gray-400 hover:text-primary-500 dark:hover:text-primary-400"
+          className="mb-8 flex items-center text-gray-600 dark:text-gray-400 hover:text-blue-500"
         >
           <ArrowLeft className="w-5 h-5 mr-2" />
           Back to Opportunities
@@ -72,14 +86,14 @@ export default function OpportunityDetail() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass p-8 rounded-xl"
+          className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg"
         >
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-4">
               <img
                 src={opportunity.logo || generateFallbackLogo(opportunity.organization)}
                 alt={`${opportunity.organization} logo`}
-                className="w-16 h-16 rounded-full object-cover"
+                className="w-16 h-16 rounded-full object-cover bg-gray-100"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.onerror = null;
@@ -133,7 +147,7 @@ export default function OpportunityDetail() {
             {opportunity.tags?.map((tag) => (
               <span
                 key={tag}
-                className="px-3 py-1 text-sm font-medium bg-gray-100 dark:bg-dark-700 text-gray-600 dark:text-gray-300 rounded-full"
+                className="px-3 py-1 text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full"
               >
                 {tag}
               </span>
@@ -144,7 +158,7 @@ export default function OpportunityDetail() {
             href={opportunity.link}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
           >
             Apply Now
             <ExternalLink className="w-5 h-5" />

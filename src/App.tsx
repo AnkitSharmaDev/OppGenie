@@ -3,7 +3,6 @@ import { Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { ThemeProvider } from './providers/ThemeProvider';
 import { ThemeToggle } from './components/ThemeToggle';
-import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import New from './pages/New';
 import Trending from './pages/Trending';
@@ -16,6 +15,7 @@ import Settings from './pages/Settings';
 import Footer from './components/Footer';
 import { motion } from 'framer-motion';
 import OpportunityDetail from './pages/OpportunityDetail';
+import { Toaster } from 'sonner';
 
 function Navigation() {
   const { user, signOut } = useAuth();
@@ -134,6 +134,7 @@ function App() {
 
   return (
     <ThemeProvider>
+      <Toaster position="top-right" richColors />
       <div className="min-h-screen bg-white dark:bg-dark-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
         <Navigation />
         <main className="flex-grow">
