@@ -27,7 +27,7 @@ A smart, Gen Z-themed opportunity-finder chatbot that helps users discover volun
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/oppgenie.git
+   git clone https://github.com/AnkitSharmaDev/oppgenie.git
    cd oppgenie
    ```
 
